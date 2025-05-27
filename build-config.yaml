@@ -22,6 +22,7 @@ distributions:
     package_manager:
       install: "apk add --no-cache"
       remove: "apk del"
+      cleanup: ""
     download_tool: "wget"
     archive_ext: ".tar.gz"
     extract_cmd: "tar -xf tomcat.tar.gz -C \"$CATALINA_HOME\" --strip-components=1"

@@ -81,10 +81,13 @@ generate_linux_dockerfile() {
     else
         # Standard Linux Dockerfile
         local cleanup_commands=""
+        echo 1 $cleanup_commands
         if [ -n "$remove_cmd" ]; then
             cleanup_commands="${remove_cmd} ${download_tool}"
+            echo 2 $cleanup_commands
             if [ -n "$cleanup_cmd" ]; then
-                cleanup_commands="${cleanup_commands} && ${cleanup_cmd}"
+                cleanup_commands="${cleanup_commands} \&\& ${cleanup_cmd}"
+                echo 3 $cleanup_commands
             fi
         fi
 
@@ -100,7 +103,14 @@ generate_linux_dockerfile() {
         template_content=${template_content//\$\{archive_ext\}/$archive_ext}
         template_content=${template_content//\$\{extract_cmd\}/$extract_cmd}
         template_content=${template_content//\$\{file_cleanup_cmd\}/$file_cleanup_cmd}
-        template_content=${template_content//\$\{cleanup_commands\}/$cleanup_commands}
+        # Handle cleanup_commands with proper escaping to avoid issues with special characters
+        if [ -n "$cleanup_commands" ]; then
+            echo 4 $cleanup_commands
+            template_content=${template_content//\$\{cleanup_commands\}/$cleanup_commands}
+        else
+            # If cleanup_commands is empty, just remove the variable reference
+            template_content=${template_content//\$\{cleanup_commands\}/}
+        fi
         template_content=${template_content//\$\{run_cmd\}/$run_cmd}
 
         # Write the processed template to the Dockerfile
