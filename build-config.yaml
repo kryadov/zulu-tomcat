@@ -1,0 +1,94 @@
+# Zulu Tomcat Docker Build Configuration
+
+# Tomcat versions
+tomcat:
+  "9.0":
+    version: "9.0.105"
+    url: "https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.105/bin/apache-tomcat-9.0.105"
+    jdk: "8"
+  "10.1":
+    version: "10.1.41"
+    url: "https://dlcdn.apache.org/tomcat/tomcat-10/v10.1.41/bin/apache-tomcat-10.1.41"
+    jdk: "11"
+  "11.0":
+    version: "11.0.7"
+    url: "https://dlcdn.apache.org/tomcat/tomcat-11/v11.0.7/bin/apache-tomcat-11.0.7"
+    jdk: "21"
+
+# OS/Distribution configurations
+distributions:
+  alpine:
+    base_image: "azul/zulu-openjdk-alpine"
+    package_manager:
+      install: "apk add --no-cache"
+      remove: "apk del"
+    download_tool: "wget"
+    archive_ext: ".tar.gz"
+    extract_cmd: "tar -xf tomcat.tar.gz -C \"$CATALINA_HOME\" --strip-components=1"
+    cleanup_cmd: "rm tomcat.tar.gz"
+    shell: "/bin/sh"
+    path_format: "unix"
+    run_cmd: "catalina.sh"
+
+  centos:
+    base_image: "azul/zulu-openjdk-centos"
+    package_manager:
+      install: "yum -y install"
+      remove: "yum -y remove"
+      cleanup: "yum clean all"
+    download_tool: "wget"
+    archive_ext: ".tar.gz"
+    extract_cmd: "tar -xf tomcat.tar.gz -C \"$CATALINA_HOME\" --strip-components=1"
+    cleanup_cmd: "rm tomcat.tar.gz"
+    shell: "/bin/sh"
+    path_format: "unix"
+    run_cmd: "catalina.sh"
+
+  debian:
+    base_image: "azul/zulu-openjdk-debian"
+    package_manager:
+      install: "apt-get -qq update && apt-get -qq -y --no-install-recommends install"
+      remove: "apt-get -qq -y purge"
+      cleanup: "apt-get -qq -y autoremove && rm -rf /var/lib/apt/lists/*"
+    download_tool: "wget"
+    archive_ext: ".tar.gz"
+    extract_cmd: "tar -xf tomcat.tar.gz -C \"$CATALINA_HOME\" --strip-components=1"
+    cleanup_cmd: "rm tomcat.tar.gz"
+    shell: "/bin/sh"
+    path_format: "unix"
+    run_cmd: "catalina.sh"
+
+  ubuntu:
+    base_image: "azul/zulu-openjdk-ubuntu"
+    package_manager:
+      install: "apt-get -qq update && apt-get -qq -y --no-install-recommends install"
+      remove: "apt-get -qq -y purge"
+      cleanup: "apt-get -qq -y autoremove && rm -rf /var/lib/apt/lists/*"
+    download_tool: "wget"
+    archive_ext: ".tar.gz"
+    extract_cmd: "tar -xf tomcat.tar.gz -C \"$CATALINA_HOME\" --strip-components=1"
+    cleanup_cmd: "rm tomcat.tar.gz"
+    shell: "/bin/sh"
+    path_format: "unix"
+    run_cmd: "catalina.sh"
+
+  distroless:
+    multi_stage: true
+    builder_image: "azul/zulu-openjdk-debian"
+    base_image: "azul/zulu-openjdk-distroless"
+    package_manager:
+      install: "apt-get -qq update && apt-get -qq -y --no-install-recommends install"
+    download_tool: "wget"
+    archive_ext: ".tar.gz"
+    extract_cmd: "tar -xf tomcat.tar.gz -C \"$CATALINA_HOME\" --strip-components=1"
+    cleanup_cmd: "rm tomcat.tar.gz"
+    shell: "/bin/sh"
+    path_format: "unix"
+    use_entrypoint: true
+    entrypoint: |
+      ["java", \
+          "-Dcatalina.home=/usr/local/tomcat", \
+          "-Djava.security.egd=file:/dev/urandom", \
+          "-classpath", "/usr/local/tomcat/bin/bootstrap.jar:/usr/local/tomcat/bin/tomcat-juli.jar:/usr/local/tomcat/bin/commons-daemon.jar:/usr/local/tomcat/lib/*", \
+          "org.apache.catalina.startup.Bootstrap", \
+          "start"]

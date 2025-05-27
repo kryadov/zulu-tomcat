@@ -1,0 +1,15 @@
+FROM ${base_image}:${jdk_version}-latest
+
+ENV CATALINA_HOME /usr/local/tomcat
+ENV PATH $CATALINA_HOME/bin:$PATH
+
+RUN set -ex && \
+    ${install_cmd} ${download_tool} && \
+    mkdir -p "$CATALINA_HOME" && \
+    ${download_tool} -q -O tomcat${archive_ext} "${tomcat_url}${archive_ext}" && \
+    ${extract_cmd} && \
+    ${file_cleanup_cmd} && \
+    ${cleanup_commands}
+
+EXPOSE 8080
+CMD ["${run_cmd}", "run"]
