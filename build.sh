@@ -81,13 +81,10 @@ generate_linux_dockerfile() {
     else
         # Standard Linux Dockerfile
         local cleanup_commands=""
-        echo 1 $cleanup_commands
         if [ -n "$remove_cmd" ]; then
             cleanup_commands="${remove_cmd} ${download_tool}"
-            echo 2 $cleanup_commands
             if [ -n "$cleanup_cmd" ]; then
                 cleanup_commands="${cleanup_commands} \&\& ${cleanup_cmd}"
-                echo 3 $cleanup_commands
             fi
         fi
 
@@ -105,7 +102,6 @@ generate_linux_dockerfile() {
         template_content=${template_content//\$\{file_cleanup_cmd\}/$file_cleanup_cmd}
         # Handle cleanup_commands with proper escaping to avoid issues with special characters
         if [ -n "$cleanup_commands" ]; then
-            echo 4 $cleanup_commands
             template_content=${template_content//\$\{cleanup_commands\}/$cleanup_commands}
         else
             # If cleanup_commands is empty, just remove the variable reference
@@ -118,48 +114,6 @@ generate_linux_dockerfile() {
     fi
 
     echo "Generated Dockerfile for ${distro}/${tomcat_version}-jdk${jdk_version}"
-}
-
-# Function to generate a Dockerfile for Windows-based distributions (nanoserver)
-generate_windows_dockerfile() {
-    local tomcat_version=$1
-    local tomcat_full_version=$2
-    local tomcat_url=$3
-    local jdk_version=$4
-    local output_dir="${BUILD_DIR}/nanoserver/${tomcat_version}-jdk${jdk_version}"
-
-    # Create directory if it doesn't exist
-    mkdir -p "$output_dir"
-
-    # Get nanoserver-specific configuration
-    local base_image=$(yq e ".distributions.nanoserver.base_image" "$CONFIG_FILE")
-    local catalina_home=$(yq e ".distributions.nanoserver.catalina_home" "$CONFIG_FILE")
-    local path_separator=$(yq e ".distributions.nanoserver.env_path_separator" "$CONFIG_FILE")
-    local extract_cmd=$(yq e ".distributions.nanoserver.extract_cmd" "$CONFIG_FILE")
-    local cleanup_cmd=$(yq e ".distributions.nanoserver.cleanup_cmd" "$CONFIG_FILE")
-    local run_cmd=$(yq e ".distributions.nanoserver.run_cmd" "$CONFIG_FILE")
-
-    # Replace VERSION placeholder with actual version
-    extract_cmd="${extract_cmd//VERSION/${tomcat_full_version}}"
-    cleanup_cmd="${cleanup_cmd//VERSION/${tomcat_full_version}}"
-
-    # Read the template file
-    local template_content=$(cat "templates/windows/Dockerfile.template")
-
-    # Replace variables in the template
-    template_content=${template_content//\$\{base_image\}/$base_image}
-    template_content=${template_content//\$\{jdk_version\}/$jdk_version}
-    template_content=${template_content//\$\{catalina_home\}/$catalina_home}
-    template_content=${template_content//\$\{path_separator\}/$path_separator}
-    template_content=${template_content//\$\{tomcat_url\}/$tomcat_url}
-    template_content=${template_content//\$\{extract_cmd\}/$extract_cmd}
-    template_content=${template_content//\$\{cleanup_cmd\}/$cleanup_cmd}
-    template_content=${template_content//\$\{run_cmd\}/$run_cmd}
-
-    # Write the processed template to the Dockerfile
-    echo "$template_content" > "$output_dir/Dockerfile"
-
-    echo "Generated Dockerfile for nanoserver/${tomcat_version}-jdk${jdk_version}"
 }
 
 # Process each Tomcat version and distribution combination
@@ -179,9 +133,17 @@ for tomcat_version in $tomcat_versions; do
     distributions=$(yq e '.distributions | keys | .[]' "$CONFIG_FILE")
 
     for distro in $distributions; do
-        if [ "$distro" == "nanoserver" ]; then
-            generate_windows_dockerfile "$tomcat_version" "$tomcat_full_version" "$tomcat_url" "$jdk_version"
-        else
+        # Check if this distribution has excluded JDK versions
+        excluded_jdk_versions=$(yq e ".distributions.${distro}.excluded_jdk_version // 0" "$CONFIG_FILE")
+        # Check if current JDK version is in the excluded list
+        skip_build=false
+        if [ "$jdk_version" == "$excluded_jdk_versions" ]; then
+            echo "Skipping ${distro}/${tomcat_version}-jdk${jdk_version} (JDK ${jdk_version} is excluded for ${distro})"
+            skip_build=true
+            break
+        fi
+
+        if [ "$skip_build" == "false" ]; then
             generate_linux_dockerfile "$tomcat_version" "$tomcat_full_version" "$tomcat_url" "$jdk_version" "$distro"
         fi
     done
@@ -194,8 +156,9 @@ echo "Building Docker images..."
 echo "This may take a while..."
 
 # Ask if user wants to build all images
-read -p "Do you want to build all Docker images now? (y/n) " -n 1 -r
-echo
+# read -p "Do you want to build all Docker images now? (y/n) " -n 1 -r
+# echo
+REPLY=y
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     for tomcat_version in $tomcat_versions; do
         jdk_version=$(yq e ".tomcat.\"${tomcat_version}\".jdk" "$CONFIG_FILE")
@@ -203,6 +166,9 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
         for distro in $distributions; do
             image_name="zulu-tomcat-${distro}:${tomcat_version}-jdk${jdk_version}"
             dockerfile_path="${BUILD_DIR}/${distro}/${tomcat_version}-jdk${jdk_version}/Dockerfile"
+            if [ ! -f "$dockerfile_path" ]; then
+              continue
+            fi
 
             echo "Building ${image_name}..."
             docker build -t "$image_name" -f "$dockerfile_path" .

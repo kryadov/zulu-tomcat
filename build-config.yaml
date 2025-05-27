@@ -48,9 +48,9 @@ distributions:
   debian:
     base_image: "azul/zulu-openjdk-debian"
     package_manager:
-      install: "apt-get -qq update && apt-get -qq -y --no-install-recommends install"
+      install: "apt-get -qq update \\&\\& apt-get -qq -y --no-install-recommends install"
       remove: "apt-get -qq -y purge"
-      cleanup: "apt-get -qq -y autoremove && rm -rf /var/lib/apt/lists/*"
+      cleanup: "apt-get -qq -y autoremove \\&\\& rm -rf /var/lib/apt/lists/*"
     download_tool: "wget"
     archive_ext: ".tar.gz"
     extract_cmd: "tar -xf tomcat.tar.gz -C \"$CATALINA_HOME\" --strip-components=1"
@@ -62,9 +62,9 @@ distributions:
   ubuntu:
     base_image: "azul/zulu-openjdk-ubuntu"
     package_manager:
-      install: "apt-get -qq update && apt-get -qq -y --no-install-recommends install"
+      install: "apt-get -qq update \\&\\& apt-get -qq -y --no-install-recommends install"
       remove: "apt-get -qq -y purge"
-      cleanup: "apt-get -qq -y autoremove && rm -rf /var/lib/apt/lists/*"
+      cleanup: "apt-get -qq -y autoremove \\&\\& rm -rf /var/lib/apt/lists/*"
     download_tool: "wget"
     archive_ext: ".tar.gz"
     extract_cmd: "tar -xf tomcat.tar.gz -C \"$CATALINA_HOME\" --strip-components=1"
@@ -72,13 +72,14 @@ distributions:
     shell: "/bin/sh"
     path_format: "unix"
     run_cmd: "catalina.sh"
+    excluded_jdk_version: "8"
 
   distroless:
     multi_stage: true
     builder_image: "azul/zulu-openjdk-debian"
     base_image: "azul/zulu-openjdk-distroless"
     package_manager:
-      install: "apt-get -qq update && apt-get -qq -y --no-install-recommends install"
+      install: "apt-get -qq update \\&\\& apt-get -qq -y --no-install-recommends install"
     download_tool: "wget"
     archive_ext: ".tar.gz"
     extract_cmd: "tar -xf tomcat.tar.gz -C \"$CATALINA_HOME\" --strip-components=1"
