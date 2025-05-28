@@ -60,7 +60,7 @@ distributions:
     run_cmd: "catalina.sh"
 
   ubuntu:
-    base_image: "azul/zulu-openjdk-ubuntu"
+    base_image: "azul/zulu-openjdk"
     package_manager:
       install: "apt-get -qq update \\&\\& apt-get -qq -y --no-install-recommends install"
       remove: "apt-get -qq -y purge"
@@ -72,7 +72,6 @@ distributions:
     shell: "/bin/sh"
     path_format: "unix"
     run_cmd: "catalina.sh"
-    excluded_jdk_version: "8"
 
   distroless:
     multi_stage: true
