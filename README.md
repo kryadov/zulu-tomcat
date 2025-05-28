@@ -5,16 +5,16 @@ This repository contains Dockerfiles for building Tomcat images with Azul Zulu J
 ## Supported Configurations
 
 ### Tomcat Versions
-- Tomcat 9.0 with JDK 8
-- Tomcat 10.1 with JDK 11
-- Tomcat 11.0 with JDK 21
+- Tomcat 9.0.105 with JDK 8
+- Tomcat 10.1.41 with JDK 17
+- Tomcat 11.0.7 with JDK 21
 
 ### Operating Systems/Distributions
 - Alpine Linux
 - CentOS
 - Debian
 - Ubuntu
-- Distroless (minimal container with multi-stage build)
+- Distroless (minimal container with multi-stage build, JDK 8 not supported)
 
 ## Build Configuration
 
@@ -31,11 +31,9 @@ All build configurations are centralized in the `build-config.yaml` file. This f
 ### Prerequisites
 
 - Docker installed and running
-- For Linux/macOS: Bash shell and `yq` YAML processor
+- Bash shell and `yq` YAML processor
 
 ### Building All Images
-
-#### On Linux/macOS:
 
 ```bash
 # Make the script executable
@@ -47,15 +45,16 @@ chmod +x build.sh
 
 The script will:
 1. Generate Dockerfiles for all combinations of Tomcat versions and OS/distributions
-2. Ask if you want to build all Docker images
-3. If confirmed, build all Docker images
+2. Automatically build all Docker images (no confirmation prompt)
+
+Note: Unlike the docker-push.sh script which asks for confirmation, the build.sh script automatically builds all images without prompting.
 
 ### Building Specific Images
 
 If you want to build only specific images, you can use the generated Dockerfiles directly:
 
 ```bash
-# Example: Build alpine Tomcat 9.0 with JDK 8
+# Example: Build alpine Tomcat 9.0.105 with JDK 8
 docker build -t zulu-tomcat-alpine:9.0-jdk8 -f build/alpine/9.0-jdk8/Dockerfile .
 ```
 
@@ -67,11 +66,9 @@ After building the Docker images, you can push them to Docker Hub using the prov
 
 - Docker installed and running
 - Docker Hub account
-- For Linux/macOS: Bash shell and `yq` YAML processor
+- Bash shell and `yq` YAML processor
 
 ### Pushing All Images
-
-#### On Linux/macOS:
 
 ```bash
 # Make the script executable
@@ -97,7 +94,7 @@ The script will:
 If you want to push only specific images, you can use Docker commands directly:
 
 ```bash
-# Example: Tag and push alpine Tomcat 9.0 with JDK 8
+# Example: Tag and push alpine Tomcat 9.0.105 with JDK 8
 docker tag zulu-tomcat-alpine:9.0-jdk8 myorganization/zulu-tomcat-alpine:9.0-jdk8
 docker push myorganization/zulu-tomcat-alpine:9.0-jdk8
 ```
@@ -129,6 +126,8 @@ tomcat:
     url: "https://dlcdn.apache.org/tomcat/tomcat-12/v12.0.0/bin/apache-tomcat-12.0.0"
     jdk: "21"
 ```
+
+Note: Always check the [Apache Tomcat website](https://tomcat.apache.org/download-12.cgi) for the latest available versions.
 
 ## Adding New Distributions
 
