@@ -1,0 +1,145 @@
+name: build
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+  # Base images are pinned to the "<major>-latest" Zulu tags, so a periodic rebuild is
+  # what actually picks up new Zulu updates.
+  schedule:
+    - cron: '0 4 * * 1'
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Push the images to ghcr.io'
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  YQ_VERSION: v4.53.3
+
+jobs:
+  prepare:
+    name: Generate Dockerfiles
+    runs-on: ubuntu-latest
+    outputs:
+      combinations: ${{ steps.combinations.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install yq
+        run: |
+          sudo curl -fsSL -o /usr/local/bin/yq \
+            "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64"
+          sudo chmod +x /usr/local/bin/yq
+          yq --version
+
+      - name: Generate Dockerfiles
+        env:
+          BUILD_IMAGES: 'n'
+        run: ./build.sh
+
+      # The build matrix is derived from the generated files, so build-config.yaml stays
+      # the single source of truth for which combinations exist.
+      - name: Collect combinations
+        id: combinations
+        run: |
+          matrix=$(find build -name Dockerfile -printf '%h\n' \
+            | sed 's|^build/||' \
+            | sort \
+            | jq -R -s -c '{include: split("\n")
+                | map(select(length > 0))
+                | map({distro: split("/")[0], tag: split("/")[1]})}')
+          echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
+          echo "${matrix}" | jq '.include | length | "\(.) combinations"'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dockerfiles
+          path: build/
+          retention-days: 1
+
+  build:
+    name: ${{ matrix.distro }} ${{ matrix.tag }}
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare.outputs.combinations) }}
+    env:
+      # Mirrored into env so the optional login step can test for it; the secrets
+      # context itself is awkward to use in step conditions.
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: dockerfiles
+          path: build
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Optional: authenticated pulls of the Zulu base images are counted per account
+      # instead of per runner IP, which avoids the anonymous Docker Hub rate limit.
+      # Skipped entirely when the secret is not configured.
+      - name: Log in to Docker Hub
+        if: ${{ env.DOCKERHUB_USERNAME != '' }}
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Resolve image name
+        id: image
+        run: |
+          owner=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "name=ghcr.io/${owner}/zulu-tomcat-${{ matrix.distro }}" >> "$GITHUB_OUTPUT"
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: build/${{ matrix.distro }}/${{ matrix.tag }}/Dockerfile
+          load: true
+          tags: ${{ steps.image.outputs.name }}:${{ matrix.tag }}
+
+      # Nothing is published before the image has proven it actually serves requests.
+      - name: Smoke test
+        run: |
+          set -euo pipefail
+          image="${{ steps.image.outputs.name }}:${{ matrix.tag }}"
+          cid=$(docker run -d -p 18080:8080 "$image")
+          trap 'docker logs "$cid" || true; docker rm -f "$cid" >/dev/null 2>&1 || true' EXIT
+
+          for _ in $(seq 45); do
+            if curl -fsS -o /dev/null http://127.0.0.1:18080/; then
+              echo "Tomcat responded on port 8080"
+              exit 0
+            fi
+            sleep 1
+          done
+
+          echo "Tomcat did not respond within 45s"
+          exit 1
+
+      - name: Log in to ghcr.io
+        if: ${{ github.event_name == 'release' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.publish) }}
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push image
+        if: ${{ github.event_name == 'release' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.publish) }}
+        run: docker push "${{ steps.image.outputs.name }}:${{ matrix.tag }}"
