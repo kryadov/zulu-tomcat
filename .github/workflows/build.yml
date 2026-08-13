@@ -141,6 +141,24 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # ghcr.io occasionally answers a manifest push with a 500, which is transient and
+      # would otherwise fail the job after the image has already been built and tested.
       - name: Push image
         if: ${{ github.event_name == 'release' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.publish) }}
-        run: docker push "${{ steps.image.outputs.name }}:${{ matrix.tag }}"
+        run: |
+          image="${{ steps.image.outputs.name }}:${{ matrix.tag }}"
+
+          for attempt in 1 2 3; do
+            if docker push "$image"; then
+              exit 0
+            fi
+
+            if [ "$attempt" -lt 3 ]; then
+              delay=$((attempt * 15))
+              echo "push failed (attempt ${attempt}/3), retrying in ${delay}s"
+              sleep "$delay"
+            fi
+          done
+
+          echo "push of ${image} failed after 3 attempts"
+          exit 1

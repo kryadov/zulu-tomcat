@@ -19,17 +19,15 @@ Zulu patch levels are not pinned: the images are based on the `<major>-latest` t
 
 ### Operating Systems/Distributions
 - Alpine Linux
-- CentOS
 - Debian
 - Ubuntu
 - Distroless (minimal container with multi-stage build, only JDK 17 and 21 are supported)
 
-The CentOS images are built on CentOS 7, which has reached end of life: its repositories
-moved to `vault.centos.org`, which now rejects repodata requests, so `yum` can no longer
-install packages there. These images therefore use the `curl` and `tar` binaries already
-present in the base image and configure no `package_manager` at all. Note that the CentOS
-base itself no longer receives OS security updates; prefer another distribution for new
-deployments.
+CentOS was dropped: the only Zulu CentOS base image is built on CentOS 7, which has
+reached end of life and no longer receives OS security updates.
+
+A distribution whose base image already ships a download tool can omit `package_manager`
+entirely, in which case no install or removal step is generated.
 
 ## Build Configuration
 
@@ -147,6 +145,20 @@ tomcat:
 
 A distribution can opt out of individual JDK versions with `excluded_jdk_versions`, which is how
 distroless skips JDK 8 and 25 (no such base image tags are published).
+
+## Published Images
+
+Images are built and published by GitHub Actions to
+`ghcr.io/<owner>/zulu-tomcat-<distribution>:<tomcat>-jdk<version>`, for example:
+
+```bash
+docker pull ghcr.io/kryadov/zulu-tomcat-alpine:11.0-jdk25
+```
+
+Publishing happens on a published release, on a weekly schedule and on a manual run. The
+schedule matters because the images are based on the `<major>-latest` Zulu tags, so only a
+rebuild picks up new Zulu updates. Every image is started and must answer on port 8080
+before anything is pushed.
 
 Note: Always check the [Apache Tomcat website](https://tomcat.apache.org/download-12.cgi) for the latest available versions.
 

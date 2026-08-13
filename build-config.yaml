@@ -37,21 +37,6 @@ distributions:
     path_format: "unix"
     run_cmd: "catalina.sh"
 
-  centos:
-    base_image: "azul/zulu-openjdk-centos"
-    # The base image is CentOS 7, which is EOL: its repositories moved to
-    # vault.centos.org and that host now answers repodata requests with 403, so yum
-    # cannot install anything. curl and tar already ship in the image, which is all the
-    # build needs, so no package_manager section is configured here.
-    download_tool: "curl"
-    download_flags: "-fsSL -o"
-    archive_ext: ".tar.gz"
-    extract_cmd: "tar -xf tomcat.tar.gz -C \"$CATALINA_HOME\" --strip-components=1"
-    cleanup_cmd: "rm tomcat.tar.gz"
-    shell: "/bin/sh"
-    path_format: "unix"
-    run_cmd: "catalina.sh"
-
   debian:
     base_image: "azul/zulu-openjdk-debian"
     package_manager:
