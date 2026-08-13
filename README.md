@@ -24,6 +24,13 @@ Zulu patch levels are not pinned: the images are based on the `<major>-latest` t
 - Ubuntu
 - Distroless (minimal container with multi-stage build, only JDK 17 and 21 are supported)
 
+The CentOS images are built on CentOS 7, which has reached end of life: its repositories
+moved to `vault.centos.org`, which now rejects repodata requests, so `yum` can no longer
+install packages there. These images therefore use the `curl` and `tar` binaries already
+present in the base image and configure no `package_manager` at all. Note that the CentOS
+base itself no longer receives OS security updates; prefer another distribution for new
+deployments.
+
 ## Build Configuration
 
 All build configurations are centralized in the `build-config.yaml` file. This file contains:
