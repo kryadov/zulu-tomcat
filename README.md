@@ -5,16 +5,24 @@ This repository contains Dockerfiles for building Tomcat images with Azul Zulu J
 ## Supported Configurations
 
 ### Tomcat Versions
-- Tomcat 9.0.105 with JDK 8
-- Tomcat 10.1.41 with JDK 17
-- Tomcat 11.0.7 with JDK 21
+
+Each Tomcat version is built against every Azul Zulu JDK version it supports:
+
+| Tomcat version | Zulu JDK versions | Minimum Java |
+| -------------- | ----------------- | ------------ |
+| 9.0.120        | 8, 17, 21, 25     | 8            |
+| 10.1.57        | 17, 21, 25        | 11           |
+| 11.0.24        | 17, 21, 25        | 17           |
+
+Zulu patch levels are not pinned: the images are based on the `<major>-latest` tags of the
+`azul/zulu-openjdk*` repositories, so rebuilding picks up the current Zulu update automatically.
 
 ### Operating Systems/Distributions
 - Alpine Linux
 - CentOS
 - Debian
 - Ubuntu
-- Distroless (minimal container with multi-stage build, JDK 8 not supported)
+- Distroless (minimal container with multi-stage build, only JDK 17 and 21 are supported)
 
 ## Build Configuration
 
@@ -54,8 +62,11 @@ Note: Unlike the docker-push.sh script which asks for confirmation, the build.sh
 If you want to build only specific images, you can use the generated Dockerfiles directly:
 
 ```bash
-# Example: Build alpine Tomcat 9.0.105 with JDK 8
+# Example: Build alpine Tomcat 9.0.120 with JDK 8
 docker build -t zulu-tomcat-alpine:9.0-jdk8 -f build/alpine/9.0-jdk8/Dockerfile .
+
+# Example: Build debian Tomcat 11.0.24 with JDK 25
+docker build -t zulu-tomcat-debian:11.0-jdk25 -f build/debian/11.0-jdk25/Dockerfile .
 ```
 
 ## Pushing Docker Images to Docker Hub
@@ -94,7 +105,7 @@ The script will:
 If you want to push only specific images, you can use Docker commands directly:
 
 ```bash
-# Example: Tag and push alpine Tomcat 9.0.105 with JDK 8
+# Example: Tag and push alpine Tomcat 9.0.120 with JDK 8
 docker tag zulu-tomcat-alpine:9.0-jdk8 myorganization/zulu-tomcat-alpine:9.0-jdk8
 docker push myorganization/zulu-tomcat-alpine:9.0-jdk8
 ```
@@ -114,7 +125,7 @@ To customize the builds:
 To add a new Tomcat version:
 
 1. Add a new entry to the `tomcat` section in `build-config.yaml`
-2. Specify the version, download URL, and JDK version
+2. Specify the version, download URL, and the list of JDK versions to build against
 3. Run the build script to generate Dockerfiles for the new version
 
 Example:
@@ -124,8 +135,11 @@ tomcat:
   "12.0":
     version: "12.0.0"
     url: "https://dlcdn.apache.org/tomcat/tomcat-12/v12.0.0/bin/apache-tomcat-12.0.0"
-    jdk: "21"
+    jdk: ["21", "25"]
 ```
+
+A distribution can opt out of individual JDK versions with `excluded_jdk_versions`, which is how
+distroless skips JDK 8 and 25 (no such base image tags are published).
 
 Note: Always check the [Apache Tomcat website](https://tomcat.apache.org/download-12.cgi) for the latest available versions.
 

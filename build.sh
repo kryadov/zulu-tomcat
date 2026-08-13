@@ -122,30 +122,35 @@ echo "Generating Dockerfiles..."
 # Get all Tomcat versions
 tomcat_versions=$(yq e '.tomcat | keys | .[]' "$CONFIG_FILE")
 
+# Get all distributions
+distributions=$(yq e '.distributions | keys | .[]' "$CONFIG_FILE")
+
 for tomcat_version in $tomcat_versions; do
     tomcat_full_version=$(yq e ".tomcat.\"${tomcat_version}\".version" "$CONFIG_FILE")
     tomcat_url=$(yq e ".tomcat.\"${tomcat_version}\".url" "$CONFIG_FILE")
-    jdk_version=$(yq e ".tomcat.\"${tomcat_version}\".jdk" "$CONFIG_FILE")
+    jdk_versions=$(yq e ".tomcat.\"${tomcat_version}\".jdk[]" "$CONFIG_FILE")
 
-    echo "Processing Tomcat ${tomcat_version} (${tomcat_full_version}) with JDK ${jdk_version}"
+    echo "Processing Tomcat ${tomcat_version} (${tomcat_full_version}) with JDK $(echo $jdk_versions | tr ' ' ',')"
 
-    # Get all distributions
-    distributions=$(yq e '.distributions | keys | .[]' "$CONFIG_FILE")
+    for jdk_version in $jdk_versions; do
+        for distro in $distributions; do
+            # Check if this distribution excludes the current JDK version
+            excluded_jdk_versions=$(yq e ".distributions.${distro}.excluded_jdk_versions[]" "$CONFIG_FILE")
+            skip_build=false
+            for excluded_jdk_version in $excluded_jdk_versions; do
+                if [ "$jdk_version" == "$excluded_jdk_version" ]; then
+                    skip_build=true
+                    break
+                fi
+            done
 
-    for distro in $distributions; do
-        # Check if this distribution has excluded JDK versions
-        excluded_jdk_versions=$(yq e ".distributions.${distro}.excluded_jdk_version // 0" "$CONFIG_FILE")
-        # Check if current JDK version is in the excluded list
-        skip_build=false
-        if [ "$jdk_version" == "$excluded_jdk_versions" ]; then
-            echo "Skipping ${distro}/${tomcat_version}-jdk${jdk_version} (JDK ${jdk_version} is excluded for ${distro})"
-            skip_build=true
-            break
-        fi
+            if [ "$skip_build" == "true" ]; then
+                echo "Skipping ${distro}/${tomcat_version}-jdk${jdk_version} (JDK ${jdk_version} is excluded for ${distro})"
+                continue
+            fi
 
-        if [ "$skip_build" == "false" ]; then
             generate_linux_dockerfile "$tomcat_version" "$tomcat_full_version" "$tomcat_url" "$jdk_version" "$distro"
-        fi
+        done
     done
 done
 
@@ -161,23 +166,25 @@ echo "This may take a while..."
 REPLY=y
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     for tomcat_version in $tomcat_versions; do
-        jdk_version=$(yq e ".tomcat.\"${tomcat_version}\".jdk" "$CONFIG_FILE")
+        jdk_versions=$(yq e ".tomcat.\"${tomcat_version}\".jdk[]" "$CONFIG_FILE")
 
-        for distro in $distributions; do
-            image_name="zulu-tomcat-${distro}:${tomcat_version}-jdk${jdk_version}"
-            dockerfile_path="${BUILD_DIR}/${distro}/${tomcat_version}-jdk${jdk_version}/Dockerfile"
-            if [ ! -f "$dockerfile_path" ]; then
-              continue
-            fi
+        for jdk_version in $jdk_versions; do
+            for distro in $distributions; do
+                image_name="zulu-tomcat-${distro}:${tomcat_version}-jdk${jdk_version}"
+                dockerfile_path="${BUILD_DIR}/${distro}/${tomcat_version}-jdk${jdk_version}/Dockerfile"
+                if [ ! -f "$dockerfile_path" ]; then
+                  continue
+                fi
 
-            echo "Building ${image_name}..."
-            docker build -t "$image_name" -f "$dockerfile_path" .
+                echo "Building ${image_name}..."
+                docker build -t "$image_name" -f "$dockerfile_path" .
 
-            if [ $? -eq 0 ]; then
-                echo "Successfully built ${image_name}"
-            else
-                echo "Failed to build ${image_name}"
-            fi
+                if [ $? -eq 0 ]; then
+                    echo "Successfully built ${image_name}"
+                else
+                    echo "Failed to build ${image_name}"
+                fi
+            done
         done
     done
 

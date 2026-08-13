@@ -1,19 +1,24 @@
 # Zulu Tomcat Docker Build Configuration
 
 # Tomcat versions
+# The jdk list holds every Zulu JDK major version an image is built for.
+# Zulu patch levels come from the "<major>-latest" base image tags, so they update automatically.
 tomcat:
   "9.0":
-    version: "9.0.105"
-    url: "https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.105/bin/apache-tomcat-9.0.105"
-    jdk: "8"
+    version: "9.0.120"
+    url: "https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.120/bin/apache-tomcat-9.0.120"
+    # Tomcat 9.0 requires Java 8 or later
+    jdk: ["8", "17", "21", "25"]
   "10.1":
-    version: "10.1.41"
-    url: "https://dlcdn.apache.org/tomcat/tomcat-10/v10.1.41/bin/apache-tomcat-10.1.41"
-    jdk: "17"
+    version: "10.1.57"
+    url: "https://dlcdn.apache.org/tomcat/tomcat-10/v10.1.57/bin/apache-tomcat-10.1.57"
+    # Tomcat 10.1 requires Java 11 or later
+    jdk: ["17", "21", "25"]
   "11.0":
-    version: "11.0.7"
-    url: "https://dlcdn.apache.org/tomcat/tomcat-11/v11.0.7/bin/apache-tomcat-11.0.7"
-    jdk: "21"
+    version: "11.0.24"
+    url: "https://dlcdn.apache.org/tomcat/tomcat-11/v11.0.24/bin/apache-tomcat-11.0.24"
+    # Tomcat 11.0 requires Java 17 or later
+    jdk: ["17", "21", "25"]
 
 # OS/Distribution configurations
 distributions:
@@ -86,7 +91,8 @@ distributions:
     shell: "/bin/sh"
     path_format: "unix"
     use_entrypoint: true
-    excluded_jdk_version: "8"
+    # azul/zulu-openjdk-distroless only publishes 17 and 21 tags
+    excluded_jdk_versions: ["8", "25"]
     entrypoint: |
       ["java", \
           "-Dcatalina.home=/usr/local/tomcat", \

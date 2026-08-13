@@ -75,28 +75,30 @@ read -p "Do you want to push all Docker images to Docker Hub? (y/n) " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     for tomcat_version in $tomcat_versions; do
-        jdk_version=$(yq e ".tomcat.\"${tomcat_version}\".jdk" "$CONFIG_FILE")
-        
-        for distro in $distributions; do
-            local_image="zulu-tomcat-${distro}:${tomcat_version}-jdk${jdk_version}"
-            remote_image="${DOCKER_HUB_ORG}/zulu-tomcat-${distro}:${tomcat_version}-jdk${jdk_version}"
-            
-            # Check if image exists locally
-            if docker image inspect "$local_image" &> /dev/null; then
-                echo "Tagging ${local_image} as ${remote_image}..."
-                docker tag "$local_image" "$remote_image"
-                
-                echo "Pushing ${remote_image} to Docker Hub..."
-                docker push "$remote_image"
-                
-                if [ $? -eq 0 ]; then
-                    echo "Successfully pushed ${remote_image}"
+        jdk_versions=$(yq e ".tomcat.\"${tomcat_version}\".jdk[]" "$CONFIG_FILE")
+
+        for jdk_version in $jdk_versions; do
+            for distro in $distributions; do
+                local_image="zulu-tomcat-${distro}:${tomcat_version}-jdk${jdk_version}"
+                remote_image="${DOCKER_HUB_ORG}/zulu-tomcat-${distro}:${tomcat_version}-jdk${jdk_version}"
+
+                # Check if image exists locally
+                if docker image inspect "$local_image" &> /dev/null; then
+                    echo "Tagging ${local_image} as ${remote_image}..."
+                    docker tag "$local_image" "$remote_image"
+
+                    echo "Pushing ${remote_image} to Docker Hub..."
+                    docker push "$remote_image"
+
+                    if [ $? -eq 0 ]; then
+                        echo "Successfully pushed ${remote_image}"
+                    else
+                        echo "Failed to push ${remote_image}"
+                    fi
                 else
-                    echo "Failed to push ${remote_image}"
+                    echo "Warning: Image ${local_image} not found locally, skipping."
                 fi
-            else
-                echo "Warning: Image ${local_image} not found locally, skipping."
-            fi
+            done
         done
     done
     
