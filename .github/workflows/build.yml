@@ -40,10 +40,11 @@ jobs:
           sudo chmod +x /usr/local/bin/yq
           yq --version
 
+      # Invoked through bash because build.sh is stored without the executable bit.
       - name: Generate Dockerfiles
         env:
           BUILD_IMAGES: 'n'
-        run: ./build.sh
+        run: bash ./build.sh
 
       # The build matrix is derived from the generated files, so build-config.yaml stays
       # the single source of truth for which combinations exist.
