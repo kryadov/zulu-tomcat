@@ -10,9 +10,9 @@ Each Tomcat version is built against every Azul Zulu JDK version it supports:
 
 | Tomcat version | Zulu JDK versions | Minimum Java |
 | -------------- | ----------------- | ------------ |
-| 9.0.120        | 8, 17, 21, 25     | 8            |
-| 10.1.57        | 17, 21, 25        | 11           |
-| 11.0.24        | 17, 21, 25        | 17           |
+| 9.0.124        | 8, 17, 21, 25     | 8            |
+| 10.1.61        | 17, 21, 25        | 11           |
+| 11.0.29        | 17, 21, 25        | 17           |
 
 Zulu patch levels are not pinned: the images are based on the `<major>-latest` tags of the
 `azul/zulu-openjdk*` repositories, so rebuilding picks up the current Zulu update automatically.
@@ -67,10 +67,10 @@ Note: Unlike the docker-push.sh script which asks for confirmation, the build.sh
 If you want to build only specific images, you can use the generated Dockerfiles directly:
 
 ```bash
-# Example: Build alpine Tomcat 9.0.120 with JDK 8
+# Example: Build alpine Tomcat 9.0.124 with JDK 8
 docker build -t zulu-tomcat-alpine:9.0-jdk8 -f build/alpine/9.0-jdk8/Dockerfile .
 
-# Example: Build debian Tomcat 11.0.24 with JDK 25
+# Example: Build debian Tomcat 11.0.29 with JDK 25
 docker build -t zulu-tomcat-debian:11.0-jdk25 -f build/debian/11.0-jdk25/Dockerfile .
 ```
 
@@ -110,7 +110,7 @@ The script will:
 If you want to push only specific images, you can use Docker commands directly:
 
 ```bash
-# Example: Tag and push alpine Tomcat 9.0.120 with JDK 8
+# Example: Tag and push alpine Tomcat 9.0.124 with JDK 8
 docker tag zulu-tomcat-alpine:9.0-jdk8 myorganization/zulu-tomcat-alpine:9.0-jdk8
 docker push myorganization/zulu-tomcat-alpine:9.0-jdk8
 ```
