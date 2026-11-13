@@ -31,7 +31,7 @@ jobs:
     outputs:
       combinations: ${{ steps.combinations.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install yq
         run: |
@@ -81,7 +81,7 @@ jobs:
       # context itself is awkward to use in step conditions.
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/download-artifact@v4
         with:
